@@ -1,0 +1,15 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: main
+nodes_managed: true
+exported_at: "2026-08-20T10:03:09Z"
+modules:
+    "":
+        dir_name: AI 研究工作流可视化 Studio
+        title: AI 研究工作流可视化 Studio
+        scope: []
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
