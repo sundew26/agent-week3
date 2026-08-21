@@ -1,21 +1,31 @@
 import asyncio
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langgraph.types import Command
 
-from .graph import get_compiled_graph
+from .graph import get_compiled_graph, init_checkpointer, cleanup_checkpointer
 from .state import ResearchState
 from .schemas import StartRequest, ReviewRequest
 
-app = FastAPI(title="Workflow Studio API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    await init_checkpointer()
+    yield
+    await cleanup_checkpointer()
+
+
+app = FastAPI(title="Workflow Studio API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:1993", "http://localhost:5173", "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

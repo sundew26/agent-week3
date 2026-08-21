@@ -7,6 +7,11 @@ from .nodes import (
     write_node, review_node, output_node, revision_node
 )
 
+# 全局 checkpointer 实例（需要在 lifespan 中初始化）
+_checkpointer = None
+_checkpointer_ctx = None
+_compiled_graph = None
+
 
 def route_after_review(state: ResearchState) -> str:
     """审核后的条件路由"""
@@ -62,16 +67,38 @@ def build_research_graph():
     return graph
 
 
+async def init_checkpointer():
+    """初始化检查点器（在应用 lifespan 中调用）"""
+    global _checkpointer, _checkpointer_ctx
+    _checkpointer_ctx = AsyncSqliteSaver.from_conn_string("./checkpoints.db")
+    _checkpointer = await _checkpointer_ctx.__aenter__()
+    return _checkpointer
+
+
+async def cleanup_checkpointer():
+    """清理检查点器"""
+    global _checkpointer, _checkpointer_ctx
+    if _checkpointer_ctx:
+        await _checkpointer_ctx.__aexit__(None, None, None)
+        _checkpointer = None
+        _checkpointer_ctx = None
+
+
 async def get_compiled_graph():
     """编译图并附带检查点持久化"""
+    global _compiled_graph, _checkpointer
+
+    if _compiled_graph is not None:
+        return _compiled_graph
+
+    if _checkpointer is None:
+        await init_checkpointer()
+
     graph = build_research_graph()
 
-    # SQLite 检查点（生产环境用 PostgreSQL）
-    checkpointer = AsyncSqliteSaver.from_conn_string("./checkpoints.db")
-
-    compiled = graph.compile(
-        checkpointer=checkpointer,
+    _compiled_graph = graph.compile(
+        checkpointer=_checkpointer,
         interrupt_before=["review"],  # 在审核节点前暂停
     )
 
-    return compiled
+    return _compiled_graph

@@ -10,8 +10,8 @@ from .config import LLM_MODEL, OPENAI_BASE_URL, OPENAI_API_KEY
 llm = ChatOpenAI(
     model=LLM_MODEL,
     temperature=0.3,
-    openai_api_key=OPENAI_API_KEY,
-    openai_base_url=OPENAI_BASE_URL,
+    api_key=OPENAI_API_KEY,
+    base_url=OPENAI_BASE_URL,
 )
 
 
