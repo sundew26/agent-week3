@@ -21,7 +21,7 @@ export type WorkflowNode = Node<WorkflowNodeData>
 
 // SSE 事件类型
 export interface SSEEvent {
-  type: 'node_start' | 'node_end' | 'token' | 'tool_result' | 'interrupted' | 'completed' | 'error'
+  type: 'node_start' | 'node_end' | 'token' | 'tool_result' | 'interrupted' | 'completed' | 'error' | 'final_report'
   node?: string
   content?: string
   output?: string
@@ -29,6 +29,7 @@ export interface SSEEvent {
   at?: string
   message?: string
   workflow_id?: string
+  report?: string
 }
 
 // 工作流状态
@@ -39,6 +40,7 @@ export interface WorkflowState {
   isInterrupted: boolean
   interruptedAt: string | null
   streamingText: string
+  finalReport: string
   workflowId: string | null
 }
 

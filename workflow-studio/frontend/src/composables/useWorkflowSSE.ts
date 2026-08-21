@@ -8,6 +8,7 @@ export function useWorkflowSSE() {
   const isInterrupted = ref(false)
   const interruptedAt = ref<string | null>(null)
   const streamingText = ref('')
+  const finalReport = ref('')
   const workflowId = ref<string | null>(null)
 
   const currentWorkflowId = computed(() => workflowId.value)
@@ -63,6 +64,12 @@ export function useWorkflowSSE() {
         logs.value = [...logs.value, '🎉 工作流执行完成！']
         break
 
+      case 'final_report':
+        if (event.report) {
+          finalReport.value = event.report
+        }
+        break
+
       case 'error':
         isRunning.value = false
         isInterrupted.value = false
@@ -79,6 +86,7 @@ export function useWorkflowSSE() {
     isInterrupted.value = false
     interruptedAt.value = null
     streamingText.value = ''
+    finalReport.value = ''
     workflowId.value = null
 
     try {
@@ -163,6 +171,7 @@ export function useWorkflowSSE() {
     isInterrupted,
     interruptedAt,
     streamingText,
+    finalReport,
     currentWorkflowId,
     startWorkflow,
     submitReview,

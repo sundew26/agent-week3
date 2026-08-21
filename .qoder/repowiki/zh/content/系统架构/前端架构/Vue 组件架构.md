@@ -16,6 +16,12 @@
 - [package.json](file://workflow-studio/frontend/package.json)
 </cite>
 
+## 更新摘要
+**所做更改**
+- 更新了 BaseNode 基础节点组件章节，反映移除了节点类型图标映射功能
+- 简化了 UI 显示逻辑，专注于状态驱动的视觉反馈
+- 调整了可扩展性设计说明，强调基于状态的渲染而非类型映射
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -36,7 +42,7 @@
 - 阐述主画布 WorkflowCanvas 的设计模式、基础节点 BaseNode 的可扩展性、侧边栏 SidePanel 的状态管理
 - 覆盖生命周期管理、事件处理模式、响应式数据绑定
 - 提供组件复用策略、样式隔离与性能优化技巧
-- 给出“新增工作流节点”的实操步骤与示例路径
+- 给出"新增工作流节点"的实操步骤与示例路径
 
 ## 项目结构
 前端采用基于功能分层的组织方式：
@@ -62,12 +68,12 @@ J --> K["types/workflow.ts"]
 
 图表来源
 - [App.vue:1-10](file://workflow-studio/frontend/src/App.vue#L1-L10)
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
-- [BaseNode.vue:1-82](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L82)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
+- [BaseNode.vue:1-70](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L70)
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
-- [workflow.ts:1-64](file://workflow-studio/frontend/src/types/workflow.ts#L1-L64)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
+- [workflow.ts:1-66](file://workflow-studio/frontend/src/types/workflow.ts#L1-L66)
 
 章节来源
 - [App.vue:1-10](file://workflow-studio/frontend/src/App.vue#L1-L10)
@@ -75,17 +81,17 @@ J --> K["types/workflow.ts"]
 
 ## 核心组件
 - WorkflowCanvas：基于 Vue Flow 的主画布容器，负责注册自定义节点类型、维护节点与边的响应式数据、监听并同步后端 SSE 状态到可视化层。
-- BaseNode：通用节点渲染器，根据节点类型与状态动态展示图标、边框、文字与执行耗时；通过 Handle 暴露连接点。
+- BaseNode：通用节点渲染器，专注于基于节点状态的动态展示，通过 Handle 暴露连接点；移除了复杂的节点类型图标映射，简化为统一的状态驱动 UI。
 - SidePanel：右侧控制面板，聚合输入、审核弹窗、流式输出、节点详情与执行日志等子面板，统一接收父级传入的状态与回调。
 - useWorkflowSSE：封装 SSE 事件处理、工作流启动与人工审核提交，维护运行态、中断态、流式文本与日志。
 - AnimatedEdge：自定义连线组件，支持运行时动画指示流转。
 - 面板组件：ChatInput、ReviewDialog、NodeDetail、Timeline 分别承担输入、审核、详情与日志展示。
 
 章节来源
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
-- [BaseNode.vue:1-82](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L82)
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
+- [BaseNode.vue:1-70](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L70)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
 - [ChatInput.vue:1-40](file://workflow-studio/frontend/src/components/panels/ChatInput.vue#L1-L40)
 - [ReviewDialog.vue:1-54](file://workflow-studio/frontend/src/components/panels/ReviewDialog.vue#L1-L54)
@@ -93,7 +99,7 @@ J --> K["types/workflow.ts"]
 - [Timeline.vue:1-22](file://workflow-studio/frontend/src/components/panels/Timeline.vue#L1-L22)
 
 ## 架构总览
-整体采用“画布 + 侧边栏 + 可插拔节点”的架构：
+整体采用"画布 + 侧边栏 + 可插拔节点"的架构：
 - 画布层：Vue Flow 提供图编辑能力，WorkflowCanvas 作为编排中心，集中管理 nodes/edges 与交互事件。
 - 状态层：useWorkflowSSE 作为单一可信源，驱动节点状态、日志、流式文本与运行标志；可选 Pinia store 用于跨组件共享。
 - 视图层：SidePanel 聚合多个子面板，通过 props/events 与父组件协作；BaseNode 与 AnimatedEdge 作为可复用可视化单元。
@@ -123,9 +129,9 @@ SSE-->>WC : 继续推进流程
 
 图表来源
 - [ChatInput.vue:1-40](file://workflow-studio/frontend/src/components/panels/ChatInput.vue#L1-L40)
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
 
 ## 详细组件分析
 
@@ -156,29 +162,37 @@ UserClick --> |否| End(["等待下一轮更新"])
 ```
 
 图表来源
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
 
 章节来源
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
 
 ### BaseNode 基础节点组件
-- 可扩展性设计
-  - 通过 props.data.nodeType 映射不同图标，便于扩展新节点类型
-  - 通过 props.data.status 切换样式与动画，支持 idle/running/completed/error/waiting
+**已更新** 移除了节点类型图标映射功能，简化为基于状态的统一渲染逻辑
+
+- 简化后的可扩展性设计
+  - 专注于基于节点状态的动态展示，通过 props.data.status 切换样式与动画
+  - 移除了复杂的 nodeTypeIcons 映射，所有节点类型使用统一的视觉风格
   - 使用 Handle 暴露上下连接点，天然适配 Vue Flow 连线
+- 状态驱动的 UI 系统
+  - 通过 statusConfig 定义不同状态的颜色、边框和动画效果
+  - 通过 statusIcons 映射状态到对应的 Lucide 图标
+  - 支持 idle/running/completed/error/waiting 五种状态
 - 样式与交互
   - 使用 clsx 组合动态类名，确保状态驱动的视觉反馈
   - 显示执行耗时（startTime/endTime），便于调试与度量
+  - 统一的圆角边框、阴影和过渡动画效果
 - 复用策略
-  - 所有业务节点均可继承此渲染逻辑，仅需提供不同的 label/nodeType/status
+  - 所有业务节点均可继承此渲染逻辑，无需关心具体类型
+  - 通过 label 字段提供节点名称，保持界面简洁一致
 
 ```mermaid
 classDiagram
 class BaseNode {
 +props.data.label
-+props.data.nodeType
 +props.data.status
-+computed.icon
++computed.config
++computed.statusIcon
 +computed.containerClasses
 +computed.textClasses
 +computed.iconClasses
@@ -190,12 +204,12 @@ BaseNode --> NodeProps : "接收"
 ```
 
 图表来源
-- [BaseNode.vue:1-82](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L82)
-- [workflow.ts:1-64](file://workflow-studio/frontend/src/types/workflow.ts#L1-L64)
+- [BaseNode.vue:1-70](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L70)
+- [workflow.ts:1-66](file://workflow-studio/frontend/src/types/workflow.ts#L1-L66)
 
 章节来源
-- [BaseNode.vue:1-82](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L82)
-- [workflow.ts:1-64](file://workflow-studio/frontend/src/types/workflow.ts#L1-L64)
+- [BaseNode.vue:1-70](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L70)
+- [workflow.ts:1-66](file://workflow-studio/frontend/src/types/workflow.ts#L1-L66)
 
 ### SidePanel 侧边栏组件与状态管理
 - 职责
@@ -225,14 +239,14 @@ TL-->>SP : logs
 ```
 
 图表来源
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
 - [ChatInput.vue:1-40](file://workflow-studio/frontend/src/components/panels/ChatInput.vue#L1-L40)
 - [ReviewDialog.vue:1-54](file://workflow-studio/frontend/src/components/panels/ReviewDialog.vue#L1-L54)
 - [NodeDetail.vue:1-36](file://workflow-studio/frontend/src/components/panels/NodeDetail.vue#L1-L36)
 - [Timeline.vue:1-22](file://workflow-studio/frontend/src/components/panels/Timeline.vue#L1-L22)
 
 章节来源
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
 - [workflow.ts:1-75](file://workflow-studio/frontend/src/stores/workflow.ts#L1-L75)
 
 ### 连线组件 AnimatedEdge
@@ -253,11 +267,11 @@ N --> R
 
 图表来源
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
-- [WorkflowCanvas.vue:95-127](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L95-L127)
+- [WorkflowCanvas.vue:97-129](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L97-L129)
 
 章节来源
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
-- [WorkflowCanvas.vue:95-127](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L95-L127)
+- [WorkflowCanvas.vue:97-129](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L97-L129)
 
 ### 事件处理与 SSE 流
 - 事件类型
@@ -285,10 +299,10 @@ H --> |error| ERR["isRunning=false, 记录错误"]
 ```
 
 图表来源
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
 
 章节来源
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
 
 ## 依赖关系分析
 - 外部库
@@ -315,10 +329,10 @@ AE["AnimatedEdge.vue"] --> WF
 ```
 
 图表来源
-- [WorkflowCanvas.vue:1-133](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L133)
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
-- [workflow.ts:1-64](file://workflow-studio/frontend/src/types/workflow.ts#L1-L64)
+- [WorkflowCanvas.vue:1-135](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L1-L135)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
+- [workflow.ts:1-66](file://workflow-studio/frontend/src/types/workflow.ts#L1-L66)
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
 
 章节来源
@@ -328,6 +342,7 @@ AE["AnimatedEdge.vue"] --> WF
 - 渲染优化
   - 使用 markRaw 注册节点类型，避免 Vue Flow 节点类型被深度代理
   - 批量更新 edges/nodes，减少多次响应式变更导致的重复渲染
+  - BaseNode 组件简化后减少了图标映射的计算开销
 - 内存与网络
   - 流式文本 streamingText 仅在必要时追加，避免过大字符串频繁重建
   - 日志数组 logs 适度截断或分页（可按需扩展）
@@ -350,20 +365,26 @@ AE["AnimatedEdge.vue"] --> WF
 - 审核弹窗不出现
   - 检查 isInterrupted 状态是否被置为 true
   - 确认 ReviewDialog 的 v-if 条件与父级状态同步
+- BaseNode 显示异常
+  - 确认节点数据包含正确的 status 字段
+  - 检查状态配置是否正确映射到视觉效果
 
 章节来源
-- [useWorkflowSSE.ts:1-172](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L172)
-- [WorkflowCanvas.vue:95-127](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L95-L127)
-- [SidePanel.vue:1-39](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L39)
+- [useWorkflowSSE.ts:1-181](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L1-L181)
+- [WorkflowCanvas.vue:97-129](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L97-L129)
+- [SidePanel.vue:1-51](file://workflow-studio/frontend/src/components/layout/SidePanel.vue#L1-L51)
 - [AnimatedEdge.vue:1-48](file://workflow-studio/frontend/src/components/edges/AnimatedEdge.vue#L1-L48)
+- [BaseNode.vue:1-70](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L1-L70)
 
 ## 结论
-该组件系统以 WorkflowCanvas 为中心，结合 BaseNode 的可扩展节点渲染与 SidePanel 的面板聚合，实现了清晰的数据流与良好的可维护性。通过 useWorkflowSSE 将后端 SSE 事件转化为前端响应式状态，配合 Vue Flow 的图能力，提供了流畅的工作流可视化与交互体验。遵循本文的扩展与优化建议，可快速迭代新的节点类型与功能。
+该组件系统以 WorkflowCanvas 为中心，结合简化后的 BaseNode 统一节点渲染与 SidePanel 的面板聚合，实现了清晰的数据流与良好的可维护性。通过移除复杂的节点类型图标映射，BaseNode 组件更加专注于状态驱动的视觉反馈，提供了更简洁高效的节点展示方案。配合 useWorkflowSSE 将后端 SSE 事件转化为前端响应式状态，以及 Vue Flow 的图能力，提供了流畅的工作流可视化与交互体验。遵循本文的扩展与优化建议，可快速迭代新的节点类型与功能。
 
 [本节为总结，不直接分析具体文件]
 
 ## 附录：如何开发新的工作流节点组件
-目标：新增一个名为 “generate” 的新节点类型，并在画布中显示与运行。
+目标：新增一个名为 "generate" 的新节点类型，并在画布中显示与运行。
+
+**已更新** 由于 BaseNode 组件移除了节点类型图标映射，现在只需关注状态管理
 
 步骤
 - 定义类型
@@ -374,8 +395,8 @@ AE["AnimatedEdge.vue"] --> WF
 - 配置节点数据
   - 在 initialNodes 中添加一个 type 为 'custom'、data.nodeType 为 'generate' 的节点
 - 渲染与样式
-  - 在 BaseNode.vue 的 nodeTypeIcons 中为 'generate' 添加图标
-  - 根据需要扩展 statusConfig/statusIcons（默认已支持常用状态）
+  - 无需修改 BaseNode.vue，所有节点类型使用统一的视觉风格
+  - BaseNode 会根据节点的 status 自动应用相应的样式和图标
 - 接入运行逻辑
   - 在后端返回的 SSE 事件中，确保包含 node_start/node_end 且 node 字段为新节点 id
   - 前端无需改动，BaseNode 会根据状态自动更新
@@ -384,9 +405,9 @@ AE["AnimatedEdge.vue"] --> WF
   - 检查边动画与日志是否正常
 
 参考路径
-- 类型定义：[workflow.ts:1-64](file://workflow-studio/frontend/src/types/workflow.ts#L1-L64)
-- 节点类型注册与初始节点：[WorkflowCanvas.vue:50-64](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L50-L64)
-- 节点渲染与状态映射：[BaseNode.vue:33-80](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L33-L80)
-- SSE 事件处理：[useWorkflowSSE.ts:19-72](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L19-L72)
+- 类型定义：[workflow.ts:1-66](file://workflow-studio/frontend/src/types/workflow.ts#L1-L66)
+- 节点类型注册与初始节点：[WorkflowCanvas.vue:51-65](file://workflow-studio/frontend/src/components/WorkflowCanvas.vue#L51-L65)
+- 节点渲染与状态映射：[BaseNode.vue:32-49](file://workflow-studio/frontend/src/components/nodes/BaseNode.vue#L32-L49)
+- SSE 事件处理：[useWorkflowSSE.ts:20-79](file://workflow-studio/frontend/src/composables/useWorkflowSSE.ts#L20-L79)
 
 [本节为操作指引，不直接分析具体文件]

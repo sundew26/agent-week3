@@ -14,10 +14,10 @@
 
 ## 更新摘要
 **所做更改**
-- 增强了图编译机制，引入懒初始化和缓存策略
-- 改进了检查点集成，采用全局实例管理
-- 优化了 get_compiled_graph() 的错误处理逻辑
-- 更新了应用生命周期管理，确保资源正确初始化与清理
+- 重构了工作流图结构，移除了独立的 review 节点
+- 将中断点从 review 节点迁移到 output 节点
+- 调整了条件路由逻辑，使审核流程更加简洁高效
+- 优化了工作流执行路径，减少了不必要的节点跳转
 
 ## 目录
 1. [简介](#简介)
@@ -32,7 +32,7 @@
 10. [附录](#附录)
 
 ## 简介
-本技术文档围绕基于 LangGraph 的工作流引擎，系统阐述 StateGraph 的构建过程、节点注册机制、边连接与条件路由逻辑；深入解析审核后的条件路由函数 route_after_review 的状态判断与循环控制；说明工作流图的编译流程、检查点持久化配置与中断点设置；并总结 START/END 节点使用模式、条件边定义方式与循环边处理策略。同时提供工作流图构建的最佳实践与扩展指南，帮助读者在现有研究助手工作流基础上进行二次开发与优化。
+本技术文档围绕基于 LangGraph 的工作流引擎，系统阐述 StateGraph 的构建过程、节点注册机制、边连接与条件路由逻辑；深入解析重构后的审核流程，包括移除独立 review 节点后在 output 节点设置中断点的实现原理；说明工作流图的编译流程、检查点持久化配置与中断点设置；并总结 START/END 节点使用模式、条件边定义方式与循环边处理策略。同时提供工作流图构建的最佳实践与扩展指南，帮助读者在现有研究助手工作流基础上进行二次开发与优化。
 
 ## 项目结构
 后端采用 FastAPI 作为 Web 框架，LangGraph 负责有状态多 Agent 工作流编排，SQLite 检查点用于状态持久化，SSE（Server-Sent Events）实现前端实时事件推送。前端通过 Vue Flow 可视化渲染执行状态。
@@ -69,7 +69,7 @@ K --> I
 
 **图表来源**
 - [main.py:16-41](file://workflow-studio/backend/app/main.py#L16-L41)
-- [graph.py:10-105](file://workflow-studio/backend/app/graph.py#L10-L105)
+- [graph.py:10-102](file://workflow-studio/backend/app/graph.py#L10-L102)
 - [nodes.py:18-129](file://workflow-studio/backend/app/nodes.py#L18-L129)
 - [state.py:5-30](file://workflow-studio/backend/app/state.py#L5-L30)
 - [tools.py:4-26](file://workflow-studio/backend/app/tools.py#L4-L26)
@@ -82,7 +82,7 @@ K --> I
 
 ## 核心组件
 - 状态模型 ResearchState：定义工作流中所有字段，包括消息历史、当前步骤、迭代计数、研究内容、人工审核相关字段及元数据。
-- 节点集合：plan_node、search_node、analyze_node、write_node、review_node、output_node、revision_node，分别承担规划、搜索、分析、写作、审核、输出与修订职责。
+- 节点集合：plan_node、search_node、analyze_node、write_node、output_node、revision_node，分别承担规划、搜索、分析、写作、输出与修订职责。**注意：已移除独立的 review 节点**。
 - 条件路由：route_after_review 根据审核状态与迭代次数决定下一步走向。
 - **增强型图编译**：get_compiled_graph 实现懒初始化、全局缓存和错误处理的图编译机制。
 - **全局检查点管理**：init_checkpointer 和 cleanup_checkpointer 提供异步检查点器的生命周期管理。
@@ -91,11 +91,11 @@ K --> I
 **章节来源**
 - [state.py:5-30](file://workflow-studio/backend/app/state.py#L5-L30)
 - [nodes.py:18-129](file://workflow-studio/backend/app/nodes.py#L18-L129)
-- [graph.py:10-105](file://workflow-studio/backend/app/graph.py#L10-L105)
-- [main.py:16-210](file://workflow-studio/backend/app/main.py#L16-L210)
+- [graph.py:10-102](file://workflow-studio/backend/app/graph.py#L10-L102)
+- [main.py:16-216](file://workflow-studio/backend/app/main.py#L16-L216)
 
 ## 架构总览
-整体流程从用户提问开始，依次经过规划、搜索、分析、写作、审核，随后依据审核结果进行条件分支：通过则输出最终报告；不通过则进入修订并回到搜索，形成循环，直至达到最大迭代次数或审核通过。
+整体流程从用户提问开始，依次经过规划、搜索、分析、写作，随后在 output 节点处设置中断点进行人工审核，依据审核结果进行条件分支：通过则输出最终报告；不通过则进入修订并回到搜索，形成循环，直至达到最大迭代次数或审核通过。
 
 ```mermaid
 sequenceDiagram
@@ -112,14 +112,14 @@ Cache-->>Graph : 返回已编译图
 else 缓存未命中
 Graph->>Checkpoint : init_checkpointer()
 Graph->>Graph : build_research_graph()
-Graph->>Graph : graph.compile(checkpointer, interrupt_before)
+Graph->>Graph : graph.compile(checkpointer, interrupt_before=["output"])
 Graph->>Cache : 缓存编译结果
 end
 Graph->>Graph : astream_events(initial_state, config)
 Graph->>Checkpoint : 写入检查点
 Graph-->>API : 事件流节点开始/结束、LLM token、工具结果
 API-->>Client : SSE 推送事件
-Note over Graph : 若 interrupt_before=["review"]，则在 review 前暂停
+Note over Graph : 在 output 节点前暂停，等待人工审核
 Client->>API : POST /api/workflow/review (提交审核结果)
 API->>Graph : astream_events(Command(update=update, resume=True))
 Graph->>Graph : 继续执行后续节点
@@ -128,22 +128,22 @@ API-->>Client : SSE 推送事件
 ```
 
 **图表来源**
-- [main.py:16-210](file://workflow-studio/backend/app/main.py#L16-L210)
-- [graph.py:10-105](file://workflow-studio/backend/app/graph.py#L10-L105)
+- [main.py:16-216](file://workflow-studio/backend/app/main.py#L16-L216)
+- [graph.py:10-102](file://workflow-studio/backend/app/graph.py#L10-L102)
 - [nodes.py:18-129](file://workflow-studio/backend/app/nodes.py#L18-L129)
 
 ## 详细组件分析
 
 ### StateGraph 构建与节点注册
 - 创建 StateGraph(ResearchState)：以 TypedDict 定义的 ResearchState 作为状态容器，确保类型安全与字段一致性。
-- 节点注册：add_node 将每个业务节点函数映射到图节点名，如 plan、search、analyze、write、review、output、revision。
-- 线性边：add_edge 建立顺序执行的边，如 START→plan→search→analyze→write→review。
-- 条件边：add_conditional_edges 为 review 节点添加条件路由，调用 route_after_review 并根据返回值选择下一节点。
+- 节点注册：add_node 将每个业务节点函数映射到图节点名，如 plan、search、analyze、write、output、revision。**注意：已移除独立的 review 节点**。
+- 线性边：add_edge 建立顺序执行的边，如 START→plan→search→analyze→write。
+- 条件边：add_conditional_edges 为 write 节点添加条件路由，调用 route_after_review 并根据返回值选择下一节点。
 - 循环边：add_edge("revision", "search") 实现修订后回到搜索的循环路径。
 - 结束边：add_edge("output", END) 表示输出完成后终止。
 
 **章节来源**
-- [graph.py:28-67](file://workflow-studio/backend/app/graph.py#L28-L67)
+- [graph.py:28-64](file://workflow-studio/backend/app/graph.py#L28-L64)
 - [state.py:5-30](file://workflow-studio/backend/app/state.py#L5-L30)
 
 ### 条件路由函数 route_after_review
@@ -153,7 +153,7 @@ API-->>Client : SSE 推送事件
   - 若 review_status == "rejected"：
     - 若 iteration_count >= 3，返回 "output"，强制结束以避免无限循环。
     - 否则返回 "revision"，进入修订节点，再回到搜索。
-  - 默认返回 "review"，保持等待（通常由外部中断或上游逻辑控制）。
+  - 默认返回 "output"，直接进入输出节点（首次运行时会在 output 节点前被中断）。
 - 循环控制：通过 iteration_count 递增与阈值判断，确保最多 3 轮修订后强制输出。
 
 **章节来源**
@@ -185,7 +185,7 @@ API-->>Client : SSE 推送事件
 - 资源泄漏防护，确保即使发生异常也能正确清理
 
 **章节来源**
-- [graph.py:10-105](file://workflow-studio/backend/app/graph.py#L10-L105)
+- [graph.py:10-102](file://workflow-studio/backend/app/graph.py#L10-L102)
 - [main.py:16-41](file://workflow-studio/backend/app/main.py#L16-L41)
 
 ### START/END 节点的使用模式
@@ -194,17 +194,17 @@ API-->>Client : SSE 推送事件
 - 使用场景：适用于明确起点与终点的有向无环图（DAG）或有环工作流，便于统一管理与可视化。
 
 **章节来源**
-- [graph.py:44-65](file://workflow-studio/backend/app/graph.py#L44-L65)
+- [graph.py:43-62](file://workflow-studio/backend/app/graph.py#L43-L62)
 
 ### 条件边的定义方式
 - add_conditional_edges(source, condition_fn, mapping)：
-  - source：触发条件判断的节点（如 "review"）。
+  - source：触发条件判断的节点（如 "write"）。
   - condition_fn：接收当前状态并返回目标节点名的函数（如 route_after_review）。
-  - mapping：将 condition_fn 返回值映射到具体目标节点名（如 {"output": "output", "revision": "revision", "review": "review"}）。
+  - mapping：将 condition_fn 返回值映射到具体目标节点名（如 {"output": "output", "revision": "revision"}）。
 - 优势：灵活表达复杂分支逻辑，结合状态字段实现动态路由。
 
 **章节来源**
-- [graph.py:50-59](file://workflow-studio/backend/app/graph.py#L50-L59)
+- [graph.py:49-56](file://workflow-studio/backend/app/graph.py#L49-L56)
 
 ### 循环边的处理策略
 - 循环边：add_edge("revision", "search") 将修订节点重新连接到搜索节点，形成循环。
@@ -212,7 +212,7 @@ API-->>Client : SSE 推送事件
 - 最佳实践：在循环路径中加入退出条件（如最大迭代次数、收敛判定），并在状态中记录关键指标以便监控。
 
 **章节来源**
-- [graph.py:61-62](file://workflow-studio/backend/app/graph.py#L61-L62)
+- [graph.py:58-62](file://workflow-studio/backend/app/graph.py#L58-L62)
 - [graph.py:16-26](file://workflow-studio/backend/app/graph.py#L16-L26)
 - [nodes.py:121-129](file://workflow-studio/backend/app/nodes.py#L121-L129)
 
@@ -221,9 +221,9 @@ API-->>Client : SSE 推送事件
 - search_node：对每个子问题调用 web_search 工具，收集结果并记录时间戳。
 - analyze_node：汇总搜索结果，调用 LLM 进行分析，返回 analysis。
 - write_node：基于分析与可选审核反馈生成草稿报告 draft_report。
-- review_node：标记审核状态 pending，配合中断点实现人机协作。
-- output_node：输出 final_report 并记录完成时间。
+- **output_node**：输出 final_report 并记录完成时间，**现在是中断点所在节点**。
 - revision_node：递增 iteration_count，提示重新搜索。
+- **注意：review_node 已被移除，审核逻辑整合到条件路由中**。
 
 **章节来源**
 - [nodes.py:18-129](file://workflow-studio/backend/app/nodes.py#L18-L129)
@@ -237,7 +237,7 @@ API-->>Client : SSE 推送事件
 - get_graph_structure：返回静态图结构供前端渲染。
 
 **章节来源**
-- [main.py:44-210](file://workflow-studio/backend/app/main.py#L44-L210)
+- [main.py:44-216](file://workflow-studio/backend/app/main.py#L44-L216)
 - [schemas.py:4-12](file://workflow-studio/backend/app/schemas.py#L4-L12)
 
 ### 流程图与状态转换
@@ -247,16 +247,15 @@ Start(["开始"]) --> Plan["规划节点"]
 Plan --> Search["搜索节点"]
 Search --> Analyze["分析节点"]
 Analyze --> Write["写作节点"]
-Write --> Review["审核节点"]
-Review --> |approved| Output["输出节点"]
-Review --> |rejected & iteration < 3| Revision["修订节点"]
-Review --> |default| Review
+Write --> |approved| Output["输出节点<br/>中断点"]
+Write --> |rejected & iteration < 3| Revision["修订节点"]
+Write --> |default| Output
 Revision --> Search
 Output --> End(["结束"])
 ```
 
 **图表来源**
-- [graph.py:44-65](file://workflow-studio/backend/app/graph.py#L44-L65)
+- [graph.py:43-62](file://workflow-studio/backend/app/graph.py#L43-L62)
 - [graph.py:16-26](file://workflow-studio/backend/app/graph.py#L16-L26)
 
 ## 依赖关系分析
@@ -278,8 +277,8 @@ Main --> Lifespan["lifespan"]
 ```
 
 **图表来源**
-- [main.py:1-210](file://workflow-studio/backend/app/main.py#L1-L210)
-- [graph.py:1-105](file://workflow-studio/backend/app/graph.py#L1-L105)
+- [main.py:1-216](file://workflow-studio/backend/app/main.py#L1-L216)
+- [graph.py:1-102](file://workflow-studio/backend/app/graph.py#L1-L102)
 - [nodes.py:1-129](file://workflow-studio/backend/app/nodes.py#L1-L129)
 - [state.py:1-30](file://workflow-studio/backend/app/state.py#L1-L30)
 - [tools.py:1-26](file://workflow-studio/backend/app/tools.py#L1-L26)
@@ -287,8 +286,8 @@ Main --> Lifespan["lifespan"]
 - [schemas.py:1-12](file://workflow-studio/backend/app/schemas.py#L1-L12)
 
 **章节来源**
-- [main.py:1-210](file://workflow-studio/backend/app/main.py#L1-L210)
-- [graph.py:1-105](file://workflow-studio/backend/app/graph.py#L1-L105)
+- [main.py:1-216](file://workflow-studio/backend/app/main.py#L1-L216)
+- [graph.py:1-102](file://workflow-studio/backend/app/graph.py#L1-L102)
 
 ## 性能考量
 - **懒初始化**：图编译仅在首次需要时执行，减少应用启动时间
@@ -308,15 +307,16 @@ Main --> Lifespan["lifespan"]
 - **检查点损坏**：清理或迁移 ./checkpoints.db；切换至更稳定的数据库后端。
 - **图编译失败**：检查检查点器初始化状态；查看全局缓存是否有效；确认依赖库版本兼容性。
 - **资源泄漏**：确认应用关闭时 cleanup_checkpointer 是否正常执行；检查异常路径下的资源清理逻辑。
+- **中断点位置变更**：**注意**：中断点已从 review 节点迁移到 output 节点，相关前端逻辑需要相应调整。
 
 **章节来源**
-- [main.py:99-107](file://workflow-studio/backend/app/main.py#L99-L107)
-- [main.py:151-158](file://workflow-studio/backend/app/main.py#L151-L158)
+- [main.py:102-107](file://workflow-studio/backend/app/main.py#L102-L107)
+- [main.py:157-162](file://workflow-studio/backend/app/main.py#L157-L162)
 - [graph.py:16-26](file://workflow-studio/backend/app/graph.py#L16-L26)
-- [graph.py:70-85](file://workflow-studio/backend/app/graph.py#L70-L85)
+- [graph.py:96-99](file://workflow-studio/backend/app/graph.py#L96-L99)
 
 ## 结论
-该工作流引擎基于 LangGraph 实现了有状态、可中断、可恢复的研究助手流程。通过增强的图编译机制、全局缓存策略和健壮的资源管理，提供了更好的性能和稳定性。StateGraph 的节点注册、条件路由与循环边，结合检查点持久化与 SSE 实时推送，提供了良好的用户体验与可扩展性。建议在后续迭代中引入并行节点、更多模板与性能监控面板，进一步提升系统的灵活性与可观测性。
+该工作流引擎基于 LangGraph 实现了有状态、可中断、可恢复的研究助手流程。通过重构后的简化审核流程，移除了独立的 review 节点，将中断点设置在 output 节点，使得工作流更加简洁高效。StateGraph 的节点注册、条件路由与循环边，结合检查点持久化与 SSE 实时推送，提供了良好的用户体验与可扩展性。建议在后续迭代中引入并行节点、更多模板与性能监控面板，进一步提升系统的灵活性与可观测性。
 
 ## 附录
 - **最佳实践**
@@ -337,3 +337,4 @@ Main --> Lifespan["lifespan"]
   - **缓存策略优化**：根据访问模式调整缓存大小和过期策略。
   - **错误恢复机制**：实现更完善的异常处理和自动恢复逻辑。
   - **性能监控**：添加图编译时间、检查点操作耗时等性能指标。
+  - **中断点管理**：根据业务需求合理设置中断点位置，平衡用户体验与控制粒度。

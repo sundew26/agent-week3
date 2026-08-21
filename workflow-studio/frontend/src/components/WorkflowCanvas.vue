@@ -23,6 +23,7 @@
         :is-running="isRunning"
         :is-interrupted="isInterrupted"
         :streaming-text="streamingText"
+        :final-report="finalReport"
         :logs="logs"
         :selected-node="selectedNodeId"
         :start-workflow="startWorkflow"
@@ -54,23 +55,23 @@ const nodeTypes = {
 
 // 初始节点布局
 const initialNodes: WorkflowNode[] = [
-  { id: 'plan', type: 'custom', position: { x: 250, y: 0 }, data: { label: '📋 规划', status: 'idle', nodeType: 'plan' } },
-  { id: 'search', type: 'custom', position: { x: 250, y: 120 }, data: { label: '🔍 搜索', status: 'idle', nodeType: 'search' } },
-  { id: 'analyze', type: 'custom', position: { x: 250, y: 240 }, data: { label: '📊 分析', status: 'idle', nodeType: 'analyze' } },
-  { id: 'write', type: 'custom', position: { x: 250, y: 360 }, data: { label: '✍️ 写作', status: 'idle', nodeType: 'write' } },
-  { id: 'review', type: 'custom', position: { x: 250, y: 480 }, data: { label: '👤 审核', status: 'idle', nodeType: 'review' } },
-  { id: 'revision', type: 'custom', position: { x: 500, y: 300 }, data: { label: '🔄 修订', status: 'idle', nodeType: 'revision' } },
-  { id: 'output', type: 'custom', position: { x: 250, y: 600 }, data: { label: '✅ 输出', status: 'idle', nodeType: 'output' } },
+  { id: 'plan', type: 'custom', position: { x: 200, y: 0 }, data: { label: '📋 规划', status: 'idle', nodeType: 'plan' } },
+  { id: 'search', type: 'custom', position: { x: 200, y: 120 }, data: { label: '🔍 搜索', status: 'idle', nodeType: 'search' } },
+  { id: 'analyze', type: 'custom', position: { x: 200, y: 240 }, data: { label: '📊 分析', status: 'idle', nodeType: 'analyze' } },
+  { id: 'write', type: 'custom', position: { x: 200, y: 360 }, data: { label: '✍️ 写作', status: 'idle', nodeType: 'write' } },
+  { id: 'review', type: 'custom', position: { x: 200, y: 480 }, data: { label: '👤 审核', status: 'idle', nodeType: 'review' } },
+  { id: 'revision', type: 'custom', position: { x: 460, y: 480 }, data: { label: '🔄 修订', status: 'idle', nodeType: 'revision' } },
+  { id: 'output', type: 'custom', position: { x: 200, y: 600 }, data: { label: '✅ 输出', status: 'idle', nodeType: 'output' } },
 ]
 
 const initialEdges: Edge[] = [
-  { id: 'e1', source: 'plan', target: 'search', animated: false },
-  { id: 'e2', source: 'search', target: 'analyze', animated: false },
-  { id: 'e3', source: 'analyze', target: 'write', animated: false },
-  { id: 'e4', source: 'write', target: 'review', animated: false },
-  { id: 'e5', source: 'review', target: 'output', label: '通过', type: 'default' },
-  { id: 'e6', source: 'review', target: 'revision', label: '不通过', style: { stroke: '#f59e0b' } },
-  { id: 'e7', source: 'revision', target: 'search', style: { stroke: '#f59e0b', strokeDasharray: '5 5' } },
+  { id: 'e1', source: 'plan', target: 'search', type: 'smoothstep' },
+  { id: 'e2', source: 'search', target: 'analyze', type: 'smoothstep' },
+  { id: 'e3', source: 'analyze', target: 'write', type: 'smoothstep' },
+  { id: 'e4', source: 'write', target: 'review', type: 'smoothstep' },
+  { id: 'e5', source: 'review', target: 'output', label: '通过', type: 'smoothstep' },
+  { id: 'e6', source: 'review', target: 'revision', label: '不通过', type: 'smoothstep', style: { stroke: '#f59e0b' } },
+  { id: 'e7', source: 'revision', target: 'search', label: '重新搜索', type: 'smoothstep', style: { stroke: '#f59e0b', strokeDasharray: '5 5' } },
 ]
 
 const defaultEdgeOptions = {
@@ -87,6 +88,7 @@ const {
   isRunning,
   isInterrupted,
   streamingText,
+  finalReport,
   logs,
   startWorkflow,
   submitReview,

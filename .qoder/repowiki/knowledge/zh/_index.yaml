@@ -3,11 +3,11 @@ schema_version: 1
 locale: zh-CN
 branch: main
 nodes_managed: true
-exported_at: "2026-08-21T01:40:11Z"
+exported_at: "2026-08-21T03:41:22Z"
 modules:
     "":
-        dir_name: AI 研究工作流可视化 Studio
-        title: AI 研究工作流可视化 Studio
+        dir_name: Workflow Studio 可视化多 Agent 研究工作流
+        title: Workflow Studio 可视化多 Agent 研究工作流
         scope: []
         source_files: []
         children: []

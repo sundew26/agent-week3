@@ -86,6 +86,9 @@ async def start_workflow(request: StartRequest):
                     if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
                         output = event.get("data", {}).get("output", {})
                         yield f"data: {json.dumps({'type': 'node_end', 'node': node_name, 'output': str(output)[:500]})}\n\n"
+                        # output 节点完成时发送完整报告
+                        if node_name == "output" and isinstance(output, dict) and output.get("final_report"):
+                            yield f"data: {json.dumps({'type': 'final_report', 'report': output['final_report']})}\n\n"
 
                 elif kind == "on_chat_model_stream":
                     # LLM 流式输出
@@ -142,7 +145,10 @@ async def submit_review(request: ReviewRequest):
                 elif kind == "on_chain_end":
                     node_name = event.get("name", "")
                     if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
+                        output = event.get("data", {}).get("output", {})
                         yield f"data: {json.dumps({'type': 'node_end', 'node': node_name})}\n\n"
+                        if node_name == "output" and isinstance(output, dict) and output.get("final_report"):
+                            yield f"data: {json.dumps({'type': 'final_report', 'report': output['final_report']})}\n\n"
                 elif kind == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk", None)
                     if chunk and hasattr(chunk, 'content') and chunk.content:
