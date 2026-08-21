@@ -4,7 +4,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from .state import ResearchState
 from .nodes import (
     plan_node, search_node, analyze_node,
-    write_node, review_node, output_node, revision_node
+    write_node, output_node, revision_node
 )
 
 # 全局 checkpointer 实例（需要在 lifespan 中初始化）
@@ -22,7 +22,7 @@ def route_after_review(state: ResearchState) -> str:
         if state.get("iteration_count", 0) >= 3:
             return "output"  # 强制输出
         return "revision"
-    return "review"  # 默认等待
+    return "output"  # 默认进入输出（首次运行时 interrupt_before 会在此暂停）
 
 
 def build_research_graph():
@@ -36,7 +36,6 @@ def build_research_graph():
     graph.add_node("search", search_node)
     graph.add_node("analyze", analyze_node)
     graph.add_node("write", write_node)
-    graph.add_node("review", review_node)
     graph.add_node("output", output_node)
     graph.add_node("revision", revision_node)
 
@@ -45,16 +44,14 @@ def build_research_graph():
     graph.add_edge("plan", "search")
     graph.add_edge("search", "analyze")
     graph.add_edge("analyze", "write")
-    graph.add_edge("write", "review")
 
-    # 4. 条件边（审核后的分支）
+    # 4. 条件边（写作后根据审核结果分支）
     graph.add_conditional_edges(
-        "review",
+        "write",
         route_after_review,
         {
             "output": "output",
             "revision": "revision",
-            "review": "review",
         }
     )
 
@@ -98,7 +95,7 @@ async def get_compiled_graph():
 
     _compiled_graph = graph.compile(
         checkpointer=_checkpointer,
-        interrupt_before=["review"],  # 在审核节点前暂停
+        interrupt_before=["output"],  # 在输出节点前暂停，等待人工审核
     )
 
     return _compiled_graph

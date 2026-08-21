@@ -78,12 +78,12 @@ async def start_workflow(request: StartRequest):
 
                 if kind == "on_chain_start":
                     node_name = event.get("name", "")
-                    if node_name in ("plan", "search", "analyze", "write", "review", "output", "revision"):
+                    if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
                         yield f"data: {json.dumps({'type': 'node_start', 'node': node_name})}\n\n"
 
                 elif kind == "on_chain_end":
                     node_name = event.get("name", "")
-                    if node_name in ("plan", "search", "analyze", "write", "review", "output", "revision"):
+                    if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
                         output = event.get("data", {}).get("output", {})
                         yield f"data: {json.dumps({'type': 'node_end', 'node': node_name, 'output': str(output)[:500]})}\n\n"
 
@@ -96,10 +96,10 @@ async def start_workflow(request: StartRequest):
                 elif kind == "on_tool_end":
                     yield f"data: {json.dumps({'type': 'tool_result', 'data': str(event.get('data', ''))[:300]})}\n\n"
 
-            # 检查是否暂停在 review 节点
+            # 检查是否暂停在 output 节点（等待人工审核）
             state = await graph.aget_state(config)
             if state.next:  # 有下一个待执行节点 = 被中断了
-                yield f"data: {json.dumps({'type': 'interrupted', 'at': state.next[0] if state.next else 'review', 'workflow_id': workflow_id})}\n\n"
+                yield f"data: {json.dumps({'type': 'interrupted', 'at': state.next[0] if state.next else 'output', 'workflow_id': workflow_id})}\n\n"
             else:
                 yield f"data: {json.dumps({'type': 'completed'})}\n\n"
 
@@ -137,21 +137,21 @@ async def submit_review(request: ReviewRequest):
                 kind = event["event"]
                 if kind == "on_chain_start":
                     node_name = event.get("name", "")
-                    if node_name in ("plan", "search", "analyze", "write", "review", "output", "revision"):
+                    if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
                         yield f"data: {json.dumps({'type': 'node_start', 'node': node_name})}\n\n"
                 elif kind == "on_chain_end":
                     node_name = event.get("name", "")
-                    if node_name in ("plan", "search", "analyze", "write", "review", "output", "revision"):
+                    if node_name in ("plan", "search", "analyze", "write", "output", "revision"):
                         yield f"data: {json.dumps({'type': 'node_end', 'node': node_name})}\n\n"
                 elif kind == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk", None)
                     if chunk and hasattr(chunk, 'content') and chunk.content:
                         yield f"data: {json.dumps({'type': 'token', 'content': chunk.content})}\n\n"
 
-            # 检查是否再次暂停在 review 节点
+            # 检查是否再次暂停在 output 节点（等待审核）
             state = await graph.aget_state(config)
             if state.next:
-                yield f"data: {json.dumps({'type': 'interrupted', 'at': state.next[0] if state.next else 'review', 'workflow_id': request.workflow_id})}\n\n"
+                yield f"data: {json.dumps({'type': 'interrupted', 'at': state.next[0] if state.next else 'output', 'workflow_id': request.workflow_id})}\n\n"
             else:
                 yield f"data: {json.dumps({'type': 'completed'})}\n\n"
         except Exception as e:

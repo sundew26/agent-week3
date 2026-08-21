@@ -3,7 +3,6 @@
     <Handle type="target" :position="Position.Top" class="!bg-gray-400" />
 
     <div class="flex items-center gap-2">
-      <span class="text-lg">{{ icon }}</span>
       <span :class="textClasses">{{ data.label }}</span>
       <component
         :is="statusIcon"
@@ -30,16 +29,6 @@ import type { WorkflowNodeData, NodeStatus } from '@/types/workflow'
 
 const props = defineProps<NodeProps<WorkflowNodeData>>()
 
-const nodeTypeIcons: Record<string, string> = {
-  plan: '📋',
-  search: '🔍',
-  analyze: '📊',
-  write: '✍️',
-  review: '👤',
-  revision: '🔄',
-  output: '✅',
-}
-
 const statusConfig: Record<NodeStatus, { color: string; textColor: string; animate?: boolean }> = {
   idle: { color: 'border-gray-300 bg-white', textColor: 'text-gray-600' },
   running: { color: 'border-blue-400 bg-blue-50 shadow-lg shadow-blue-100', textColor: 'text-blue-700', animate: true },
@@ -56,7 +45,6 @@ const statusIcons: Record<NodeStatus, typeof Loader2> = {
   waiting: Clock,
 }
 
-const icon = computed(() => nodeTypeIcons[props.data.nodeType] || '⚙️')
 const config = computed(() => statusConfig[props.data.status] || statusConfig.idle)
 const statusIcon = computed(() => statusIcons[props.data.status] || statusIcons.idle)
 
